@@ -51,7 +51,7 @@ const verifyToken = async (req, res, next) => {
 
     const token = authHeader.split(" ")[1];
 
-    console.log(token);
+    // console.log(token);
 
     const frontendURL =
       process.env.NODE_ENV === "production"
@@ -64,17 +64,19 @@ const verifyToken = async (req, res, next) => {
 
 
     const { payload } = await jwtVerify(token, JWKS);
-    next();
+
     req.user = payload;
     // console.log(payload);
-    return payload
+    next();
+    // return payload
   } catch (error) {
-    console.error('Token validation failed:', error)
-    throw error
+    console.error("Token validation failed:", error);
+
+    return res.status(401).send({
+      message: "Invalid or expired token",
+    });
   }
-
 }
-
 
 //server homepage : http://localhost:5000/
 app.get('/', (req, res) => {
@@ -120,27 +122,6 @@ app.get("/new-arrivals", async (req, res) => {
   res.send(newBooks);
 });
 
-
-//http://localhost:5000/books/id  (update)
-app.patch("/books/:id", async (req, res) => {
-  const id = req.params.id;
-  const updateBook = req.body;
-  const filter = { _id: new ObjectId(id) };
-  const updateDoc = {
-    $set: {
-      title: updateBook.title,
-      author: updateBook.author,
-      category: updateBook.category,
-      description: updateBook.description,
-      image: updateBook.image,
-    }
-  }
-  const result = await books.updateOne(filter, updateDoc);
-  res.send(result);
-
-})
-
-
 //http://localhost:5000/my-books    (only get the books added by the logedIn user)
 app.get("/my-books", verifyToken, async (req, res) => {
   try {
@@ -148,9 +129,72 @@ app.get("/my-books", verifyToken, async (req, res) => {
     const myBooks = await books.find({ "addedBy.userId": userId }).toArray();
     res.status(200).send(myBooks);
   } catch (error) {
+    console.error("My-books API error:", error);
     res.status(500).send({ message: "Failed to retrieve your books", });
   }
 });
+
+
+//http://localhost:5000/my-books/id  (update book)
+app.patch("/my-books/:id", verifyToken, async (req, res) => {
+  try {
+    const id = req.params.id;
+    const userId = req.user.sub;
+    const updateBook = req.body;
+
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).send({ message: "Invalid book ID" });
+    }
+
+    const filter = { _id: new ObjectId(id), "addedBy.userId": userId, };
+    const updateDoc = {
+      $set: {
+        title: updateBook.title,
+        author: updateBook.author,
+        category: updateBook.category,
+        description: updateBook.description,
+        image: updateBook.image,
+      },
+    };
+    const result = await books.updateOne(filter, updateDoc);
+
+    if (result.matchedCount === 0) {
+      return res.status(404).send({ message: "Book not found or you are not authorized to update it.", });
+    }
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({ message: "Failed to update book" });
+  }
+});
+
+
+
+// http://localhost:5000/my-books/id   (delete book)
+app.delete("/my-books/:id", verifyToken, async (req, res) => {
+  try {
+    const id = req.params.id;
+    const userId = req.user.sub;
+
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).send({ message: "Invalid book ID" });
+    }
+
+    const query = { _id: new ObjectId(id), "addedBy.userId": userId, };
+    const result = await books.deleteOne(query);
+
+    if (result.deletedCount === 0) {
+      return res.status(404).send({ message: "Book not found or you are not authorized to delete it.", });
+    }
+
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({ message: "Failed to delete book" });
+  }
+});
+
+
+
+
 
 
 
