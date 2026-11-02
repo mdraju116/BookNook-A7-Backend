@@ -33,17 +33,17 @@ export async function connectToMongoDB() {
     console.dir(err);
   }
 }
-const connectedClient=await connectToMongoDB();
+const connectedClient = await connectToMongoDB();
 
 // connect/create database user(db) and collection
-const database = connectedClient.db("booknook-db1"); 
-const books = database.collection("books");       
+const database = connectedClient.db("booknook-db1");
+const books = database.collection("books");
 
 
 
 //server homepage : http://localhost:5000/
 app.get('/', (req, res) => {
-    res.send('Welcome to BookNook Server')
+  res.send('Welcome to BookNook Server')
 })
 
 
@@ -51,14 +51,28 @@ app.get('/', (req, res) => {
 
 //http://localhost:5000/add-book
 app.post("/add-book", async (req, res) => {
-	  const newBook = req.body;
-	  // console.log("data from client:", newBook);
-	  // const result = res.send({ message: "Data Added to Server" });
+  const newBook = req.body;
+  // console.log("data from client:", newBook);
+  // const result = res.send({ message: "Data Added to Server" });
+  const result = await books.insertOne(newBook);
+  res.send(result);
+});
 
-	  const result = await books.insertOne(newBook);
-	  // console.log(result)
-	  res.send(result);
-	});
+// http://localhost:5000/books
+app.get("/books", async (req, res) => {
+  try {
+    const allBooks = await books.find({}).toArray();
+    res.status(200).send(allBooks);
+  } catch (error) {
+    res.status(500).send({
+      message: "Failed to fetch books",
+      error: error.message,
+    });
+  }
+});
+
+
+
 
 
 
@@ -70,7 +84,7 @@ app.post("/add-book", async (req, res) => {
 
 
 app.listen(port, () => {
-    console.log(`Server is running on port ${port}`)
+  console.log(`Server is running on port ${port}`)
 })
 
 
