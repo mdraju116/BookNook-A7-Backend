@@ -2,7 +2,7 @@ import express from "express"
 import cors from "cors";
 import 'dotenv/config'
 import { MongoClient, ObjectId } from 'mongodb';
-// ObjectId
+import { jwtVerify, createRemoteJWKSet } from 'jose'
 
 const app = express();
 const port = process.env.port || 5000;
@@ -40,6 +40,35 @@ const database = connectedClient.db("booknook-db1");
 const books = database.collection("books");
 
 
+//verify jwt token 
+const verifyToken = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader.split(" ")[1];
+
+    console.log(token);
+
+    const frontendURL =
+      process.env.NODE_ENV === "production"
+        ? process.env.FRONTEND_URL_VERCEL
+        : process.env.FRONTEND_URL_LOCAL;
+
+    const JWKS = createRemoteJWKSet(
+      new URL(`${frontendURL}/api/auth/jwks`)
+    );
+
+
+    const { payload } = await jwtVerify(token, JWKS);
+    next();
+    console.log(payload);
+    return payload
+  } catch (error) {
+    console.error('Token validation failed:', error)
+    throw error
+  }
+
+}
+
 
 //server homepage : http://localhost:5000/
 app.get('/', (req, res) => {
@@ -49,10 +78,10 @@ app.get('/', (req, res) => {
 
 // CRUD Operations
 
+//jwt used
 //http://localhost:5000/add-book
-app.post("/add-book", async (req, res) => {
+app.post("/add-book", verifyToken, async (req, res) => {
   const newBook = req.body;
-  // console.log("data from client:", newBook);
   // const result = res.send({ message: "Data Added to Server" });
   const result = await books.insertOne(newBook);
   res.send(result);
@@ -72,9 +101,9 @@ app.get("/books", async (req, res) => {
 });
 
 //http://localhost:5000/books/id
-app.get("books/:id",async(req,res)=>{
-  const id= req.params.id;
-  const query= {_id:new ObjectId(id)};
+app.get("/books/:id", async (req, res) => {
+  const id = req.params.id;
+  const query = { _id: new ObjectId(id) };
   const result = await books.findOne(query);
   res.send(result);
 })
@@ -86,6 +115,24 @@ app.get("/new-arrivals", async (req, res) => {
 });
 
 
+//http://localhost:5000/books/id  
+app.patch("/books/:id", async (req, res) => {
+  const id = req.params.id;
+  const updateBook = req.body;
+  const filter = { _id: new ObjectId(id) };
+  const updateDoc = {
+    $set: {
+      title: updateBook.title,
+      author: updateBook.author,
+      category: updateBook.category,
+      description: updateBook.description,
+      image: updateBook.image,
+    }
+  }
+  const result = await books.updateOne(filter, updateDoc);
+  res.send(result);
+
+})
 
 
 
