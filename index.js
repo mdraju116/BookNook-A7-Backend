@@ -44,6 +44,11 @@ const books = database.collection("books");
 const verifyToken = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).send({ message: "Unauthorized access" });
+    }
+
     const token = authHeader.split(" ")[1];
 
     console.log(token);
@@ -60,7 +65,8 @@ const verifyToken = async (req, res, next) => {
 
     const { payload } = await jwtVerify(token, JWKS);
     next();
-    console.log(payload);
+    req.user = payload;
+    // console.log(payload);
     return payload
   } catch (error) {
     console.error('Token validation failed:', error)
@@ -87,7 +93,7 @@ app.post("/add-book", verifyToken, async (req, res) => {
   res.send(result);
 });
 
-// http://localhost:5000/books
+// http://localhost:5000/books  (all-books)
 app.get("/books", async (req, res) => {
   try {
     const allBooks = await books.find({}).toArray();
@@ -100,7 +106,7 @@ app.get("/books", async (req, res) => {
   }
 });
 
-//http://localhost:5000/books/id
+//http://localhost:5000/books/id  (bookdetails)
 app.get("/books/:id", async (req, res) => {
   const id = req.params.id;
   const query = { _id: new ObjectId(id) };
@@ -115,7 +121,7 @@ app.get("/new-arrivals", async (req, res) => {
 });
 
 
-//http://localhost:5000/books/id  
+//http://localhost:5000/books/id  (update)
 app.patch("/books/:id", async (req, res) => {
   const id = req.params.id;
   const updateBook = req.body;
@@ -135,8 +141,16 @@ app.patch("/books/:id", async (req, res) => {
 })
 
 
-
-
+//http://localhost:5000/my-books    (only get the books added by the logedIn user)
+app.get("/my-books", verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.sub;
+    const myBooks = await books.find({ "addedBy.userId": userId }).toArray();
+    res.status(200).send(myBooks);
+  } catch (error) {
+    res.status(500).send({ message: "Failed to retrieve your books", });
+  }
+});
 
 
 
