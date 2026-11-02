@@ -38,7 +38,7 @@ const connectedClient = await connectToMongoDB();
 // connect/create database user(db) and collection
 const database = connectedClient.db("booknook-db1");
 const books = database.collection("books");
-
+const borrows= database.collection("borrows");
 
 //verify jwt token 
 const verifyToken = async (req, res, next) => {
@@ -68,7 +68,6 @@ const verifyToken = async (req, res, next) => {
     req.user = payload;
     // console.log(payload);
     next();
-    // return payload
   } catch (error) {
     console.error("Token validation failed:", error);
 
@@ -78,22 +77,20 @@ const verifyToken = async (req, res, next) => {
   }
 }
 
+
 //server homepage : http://localhost:5000/
 app.get('/', (req, res) => {
   res.send('Welcome to BookNook Server')
 })
 
 
-// CRUD Operations
-
-//jwt used
 //http://localhost:5000/add-book
 app.post("/add-book", verifyToken, async (req, res) => {
   const newBook = req.body;
-  // const result = res.send({ message: "Data Added to Server" });
   const result = await books.insertOne(newBook);
   res.send(result);
 });
+
 
 // http://localhost:5000/books  (all-books)
 app.get("/books", async (req, res) => {
@@ -135,8 +132,8 @@ app.get("/my-books", verifyToken, async (req, res) => {
 });
 
 
-//http://localhost:5000/my-books/id  (update book)
-app.patch("/my-books/:id", verifyToken, async (req, res) => {
+//http://localhost:5000/books/id  (update book)
+app.patch("/books/:id", verifyToken, async (req, res) => {
   try {
     const id = req.params.id;
     const userId = req.user.sub;
@@ -169,8 +166,8 @@ app.patch("/my-books/:id", verifyToken, async (req, res) => {
 
 
 
-// http://localhost:5000/my-books/id   (delete book)
-app.delete("/my-books/:id", verifyToken, async (req, res) => {
+// http://localhost:5000/books/id   (delete book)
+app.delete("/books/:id", verifyToken, async (req, res) => {
   try {
     const id = req.params.id;
     const userId = req.user.sub;
@@ -193,8 +190,25 @@ app.delete("/my-books/:id", verifyToken, async (req, res) => {
 });
 
 
+//http://localhost:5000/borrows    (add book to borrow)
+app.post("/borrows", verifyToken, async (req, res) => {
+  const newBorrow = req.body;
+  const result = await borrows.insertOne(newBorrow);
+  res.send(result);
+});
 
 
+//http://localhost:5000/borrows    (only get the books added by the logedIn user)
+app.get("/my-books", verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.sub;
+    const myBooks = await books.find({ "addedBy.userId": userId }).toArray();
+    res.status(200).send(myBooks);
+  } catch (error) {
+    console.error("My-books API error:", error);
+    res.status(500).send({ message: "Failed to retrieve your books", });
+  }
+});
 
 
 
