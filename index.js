@@ -38,7 +38,7 @@ const connectedClient = await connectToMongoDB();
 // connect/create database user(db) and collection
 const database = connectedClient.db("booknook-db1");
 const books = database.collection("books");
-const borrows= database.collection("borrows");
+const borrows = database.collection("borrows");
 
 //verify jwt token 
 const verifyToken = async (req, res, next) => {
@@ -48,9 +48,7 @@ const verifyToken = async (req, res, next) => {
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return res.status(401).send({ message: "Unauthorized access" });
     }
-
     const token = authHeader.split(" ")[1];
-
     // console.log(token);
 
     const frontendURL =
@@ -62,9 +60,7 @@ const verifyToken = async (req, res, next) => {
       new URL(`${frontendURL}/api/auth/jwks`)
     );
 
-
     const { payload } = await jwtVerify(token, JWKS);
-
     req.user = payload;
     // console.log(payload);
     next();
@@ -192,14 +188,59 @@ app.delete("/books/:id", verifyToken, async (req, res) => {
 
 //http://localhost:5000/borrows    (add book to borrow)
 app.post("/borrows", verifyToken, async (req, res) => {
-  const newBorrow = req.body;
-  const result = await borrows.insertOne(newBorrow);
-  res.send(result);
+  try {
+    const newBorrow = {...req.body,addedBy: {userId: req.user.sub,},};
+    const result = await borrows.insertOne(newBorrow);
+    res.status(201).send(result);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ message: "Failed to borrow book" });
+  }
 });
 
 
+//http://localhost:5000/borrows    (only get the books borrowed by the logedIn user)
+app.get("/borrows", verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.sub;
+    const myBorrows = await borrows .find({ "addedBy.userId": userId }).toArray();
+    res.status(200).send(myBorrows);
+  } catch (error) {
+    console.error("Borrows API error:", error);
+
+    res.status(500).send({
+      message: "Failed to retrieve borrowed books",
+    });
+  }
+});
 
 
+// http://localhost:5000/borrows/id   (delete borrowed book)
+// app.delete("/borrows/:id", verifyToken, async (req, res) => {
+//   try {
+//     const id = req.params.id;
+//     const userId = req.user.sub;
+
+//     if (!ObjectId.isValid(id)) {
+//       return res.status(400).send({ message: "Invalid borrow ID" });
+//     }
+//     const query = { _id: new ObjectId(id), "addedBy.userId": userId, };
+//     const result = await borrows.deleteOne(query);
+//     if (result.deletedCount === 0) {
+//       return res.status(404).send({
+//         message: "Borrow record not found or unauthorized.",
+//       });
+//     }
+
+//     res.status(200).send(result);
+//   } catch (error) {
+//     console.error("Delete borrow error:", error);
+
+//     res.status(500).send({
+//       message: "Failed to delete borrow record",
+//     });
+//   }
+// });
 
 
 app.listen(port, () => {
