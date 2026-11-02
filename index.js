@@ -198,17 +198,6 @@ app.post("/borrows", verifyToken, async (req, res) => {
 });
 
 
-//http://localhost:5000/borrows    (only get the books added by the logedIn user)
-app.get("/my-books", verifyToken, async (req, res) => {
-  try {
-    const userId = req.user.sub;
-    const myBooks = await books.find({ "addedBy.userId": userId }).toArray();
-    res.status(200).send(myBooks);
-  } catch (error) {
-    console.error("My-books API error:", error);
-    res.status(500).send({ message: "Failed to retrieve your books", });
-  }
-});
 
 
 
