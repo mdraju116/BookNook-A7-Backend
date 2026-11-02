@@ -10,7 +10,7 @@ const port = process.env.port || 5000;
 app.use(express.json());
 
 app.use(cors({
-    origin: "http://localhost:3000",
+    origin: `${process.env.FRONTEND_URL_LOCAL}`,
 }));
 
 
@@ -29,7 +29,7 @@ export async function connectToMongoDB() {
 }
 await connectToMongoDB();
 
-
+//server homepage : http://localhost:5000/
 app.get('/', (req, res) => {
     res.send('Welcome to BookNook Server')
 })
@@ -37,3 +37,6 @@ app.get('/', (req, res) => {
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`)
 })
+
+
+export default app;
