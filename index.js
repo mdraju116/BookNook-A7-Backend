@@ -216,31 +216,31 @@ app.get("/borrows", verifyToken, async (req, res) => {
 
 
 // http://localhost:5000/borrows/id   (delete borrowed book)
-// app.delete("/borrows/:id", verifyToken, async (req, res) => {
-//   try {
-//     const id = req.params.id;
-//     const userId = req.user.sub;
+app.delete("/borrows/:id", verifyToken, async (req, res) => {
+  try {
+    const id = req.params.id;
+    const userId = req.user.sub;
 
-//     if (!ObjectId.isValid(id)) {
-//       return res.status(400).send({ message: "Invalid borrow ID" });
-//     }
-//     const query = { _id: new ObjectId(id), "addedBy.userId": userId, };
-//     const result = await borrows.deleteOne(query);
-//     if (result.deletedCount === 0) {
-//       return res.status(404).send({
-//         message: "Borrow record not found or unauthorized.",
-//       });
-//     }
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).send({ message: "Invalid borrow ID" });
+    }
+    const query = { _id: new ObjectId(id), "addedBy.userId": userId, };
+    const result = await borrows.deleteOne(query);
+    if (result.deletedCount === 0) {
+      return res.status(404).send({
+        message: "Borrow record not found or unauthorized.",
+      });
+    }
 
-//     res.status(200).send(result);
-//   } catch (error) {
-//     console.error("Delete borrow error:", error);
+    res.status(200).send(result);
+  } catch (error) {
+    console.error("Delete borrow error:", error);
 
-//     res.status(500).send({
-//       message: "Failed to delete borrow record",
-//     });
-//   }
-// });
+    res.status(500).send({
+      message: "Failed to delete borrow record",
+    });
+  }
+});
 
 
 app.listen(port, () => {
