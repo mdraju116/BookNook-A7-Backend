@@ -152,23 +152,24 @@ app.get("/", (req, res) => {
 
 app.post("/add-book", verifyToken, async (req, res) => {
   try {
-    const newBook = req.body;
+    const { totalCopies, addedBy, ...bookData } = req.body;
 
-    const { totalCopies } = newBook;
-
-    if (
-      !Number.isInteger(totalCopies) ||
-      totalCopies <= 0
-    ) {
+    if (!Number.isInteger(totalCopies) || totalCopies <= 0) {
       return res.status(400).send({
         message: "Total copies must be a positive integer.",
       });
     }
 
-    const result = await books.insertOne({
-      ...newBook,
+    const newBook = {
+      ...bookData,
       totalCopies,
-    });
+      addedBy: {
+        ...(addedBy || {}),
+        userId: req.user.sub,
+      },
+    };
+
+    const result = await books.insertOne(newBook);
 
     res.status(201).send({
       message: "Book added successfully",
