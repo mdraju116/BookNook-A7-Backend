@@ -622,6 +622,43 @@ app.delete("/borrows/:id", verifyToken, async (req, res) => {
 });
 
 
+
+//top-categories
+app.get("/top-categories", async (req, res) => {
+  try {
+    const result = await books
+      .aggregate([
+        {
+          $match: {
+            category: { $exists: true, $ne: "" },
+          },
+        },
+        {
+          $group: {
+            _id: "$category",
+            totalBooks: { $sum: 1 },
+          },
+        },
+        {
+          $sort: { totalBooks: -1 },
+        },
+        {
+          $limit: 5, //top-5 
+        },
+      ])
+      .toArray();
+
+    const categories = result.map((item) => ({
+      category: item._id,
+      totalBooks: item.totalBooks,
+    }));
+
+    res.send(categories);
+  } catch (error) {
+    res.status(500).send({ message: "Failed to fetch top categories" });
+  }
+});
+
 // ==========================================
 // 15. START SERVER
 // ==========================================
